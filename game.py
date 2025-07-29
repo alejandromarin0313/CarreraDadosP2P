@@ -8,6 +8,7 @@ import subprocess
 import os
 import sys
 import textwrap
+import json
 from network import P2PNode
 from config import PORT, RELAY_SERVER, TARGET_SCORE
 
@@ -135,7 +136,6 @@ def main():
 
         if state == "menu":
             draw_menu(name_text, code_text, active_name, active_code, is_join, is_host_selected)
-
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -196,7 +196,6 @@ def main():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     return
-
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_BACKSPACE:
                         chat_input = chat_input[:-1]
@@ -204,6 +203,7 @@ def main():
                         if chat_input.strip():
                             chat_messages.append(name + ": " + chat_input)
                             node.send_to_all({"type": "chat", "from": name, "text": chat_input})
+                            print(f"[DEBUG] Enviado: {chat_input}")
                             chat_input = ""
                     else:
                         if len(chat_input) < 30:
@@ -212,7 +212,7 @@ def main():
                 if node.is_host:
                     if event.type == pygame.MOUSEBUTTONDOWN:
                         if pygame.Rect(300, 320, 200, 40).collidepoint(event.pos):
-                            if len(node.peers) >= 1:
+                            if len(node.peers) >= 0:
                                 for i, conn in enumerate(node.peers):
                                     conn.send(json.dumps({"type": "assign_name", "name": f"Jugador{i+2}"}).encode())
                                     players[f"Jugador{i+2}"] = 0
@@ -222,6 +222,7 @@ def main():
 
             msgs = node.get_messages()
             for m in msgs:
+                print("[DEBUG] Recibido:", m)
                 if m["type"] == "assign_name":
                     name = m["name"]
                     players[name] = 0
@@ -230,12 +231,13 @@ def main():
                 elif m["type"] == "chat":
                     chat_messages.append(m["from"] + ": " + m["text"])
 
-            show_start_button = node.is_host and len(node.peers) >= 1 and not game_started
+            show_start_button = node.is_host and len(node.peers) >= 0 and not game_started
             draw(players, 0, ["Esperando jugadores..."], None, chat_messages, chat_input, lobby=True, codigo_sala=codigo_sala, show_start_button=show_start_button)
 
         elif state == "game":
             msgs = node.get_messages()
             for msg in msgs:
+                print("[DEBUG] Recibido:", msg)
                 if msg["type"] == "roll":
                     p = msg["player"]
                     roll = msg["value"]
@@ -261,6 +263,7 @@ def main():
                         if chat_input.strip():
                             chat_messages.append(name + ": " + chat_input)
                             node.send_to_all({"type": "chat", "from": name, "text": chat_input})
+                            print(f"[DEBUG] Enviado: {chat_input}")
                             chat_input = ""
                     elif event.key == pygame.K_SPACE:
                         if list(players.keys())[current_turn] == name:
